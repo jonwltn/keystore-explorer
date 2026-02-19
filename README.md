@@ -15,7 +15,7 @@ Official website: https://keystore-explorer.org/
 
 ## Features:
 
- - Create, load, save and convert between various KeyStore types: PKCS#12, JKS, JCEKS, BKS (V1 and V2), UBER and BCFKS
+ - Create, load, save and convert between various KeyStore types: PKCS#12, JKS, JCEKS, BKS, BCFKS, UBER and PEM
  - Change KeyStore and KeyStore entry passwords
  - Delete or rename KeyStore entries
  - Cut/copy/paste KeyStore entries
