@@ -32,6 +32,7 @@ import javax.swing.SwingUtilities;
 
 import org.kse.AuthorityCertificates;
 import org.kse.KSE;
+import org.kse.SingleInstanceManager;
 import org.kse.gui.actions.CheckUpdateAction;
 import org.kse.gui.dnd.DroppedFileHandler;
 import org.kse.gui.error.DError;
@@ -90,6 +91,8 @@ public class CreateApplicationGui implements Runnable {
 
             // check if stored location of cacerts file still exists
             checkCaCerts(kseFrame);
+
+            SingleInstanceManager.register(kseFrame, DroppedFileHandler::openFiles);
 
             // open file list passed via command line params (basically same as if files were dropped on application)
             DroppedFileHandler.openFiles(kseFrame, parameterFiles);
