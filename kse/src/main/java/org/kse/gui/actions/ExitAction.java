@@ -98,7 +98,7 @@ public class ExitAction extends CloseAllAction {
             KeyStoreExplorerAction.savePasswordManagerWithProgress(kseFrame.getUnderlyingFrame());
         }
 
-        SingleInstanceManager.shutdown();
+        SingleInstanceManager.INSTANCE.shutdown();
 
         if (restart) {
             KseRestart.restart();

@@ -58,7 +58,7 @@ public enum AutoReloadWatcher {
         try {
             ws = FileSystems.getDefault().newWatchService();
 
-            watchThread = new Thread(this::eventHandler, "Watch Service");
+            watchThread = new Thread(this::eventHandler, "kse-ws-listener");
             watchThread.setDaemon(true);
             watchThread.start();
         } catch (IOException e) {

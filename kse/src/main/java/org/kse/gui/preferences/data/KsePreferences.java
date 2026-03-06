@@ -84,6 +84,7 @@ public class KsePreferences {
     private Map<String, SignatureType> signatureTypes = new HashMap<>();
     private boolean automaticallyReload = false;
     private boolean silentlyReload = false;
+    private boolean singleInstance = false;
 
     // auto-generated getters/setters
 
@@ -401,5 +402,13 @@ public class KsePreferences {
 
     public boolean isSilentlyReload() {
         return silentlyReload;
+    }
+
+    public boolean isSingleInstance() {
+        return singleInstance;
+    }
+
+    public void setSingleInstance(boolean singleInstance) {
+        this.singleInstance = singleInstance;
     }
 }

@@ -43,22 +43,37 @@ import java.util.function.BiConsumer;
 import javax.swing.SwingUtilities;
 
 import org.kse.gui.KseFrame;
+import org.kse.gui.preferences.PreferencesManager;
 
 /**
- * TODO JW - Javadocs
+ * A Singleton for managing the single instance infrastructure. The single
+ * instance is managed using unix domain sockets/named pipes. The first instance
+ * opens the socket/named pipe. Other instances of KSE will detect the existence
+ * of the socket/pipe and notify the primary instance of the files to be opened.
  */
-public final class SingleInstanceManager {
+public enum SingleInstanceManager {
+
+    /**
+     * Singleton instance
+     */
+    INSTANCE;
 
     private static final String SOCKET_FILENAME = "kse-ipc.sock";
 
-    private static boolean isPrimary;
-    private static ServerSocketChannel serverChannel;
-    private static Thread listenerThread;
+    private boolean isPrimary;
+    private ServerSocketChannel serverChannel;
+    private Thread listenerThread;
 
-    private SingleInstanceManager() {
-    }
+    /**
+     * Attempt to become the primary instance of KSE if the feature is enabled.
+     *
+     * @return True if the instance is the primary instance. False, if not.
+     */
+    public boolean tryBecomePrimary() {
+        if (!PreferencesManager.getPreferences().isSingleInstance()) {
+            return true; // every instance is "primary"
+        }
 
-    public static boolean tryBecomePrimary() {
         Path socketPath = getSocketPath();
 
         try {
@@ -95,8 +110,15 @@ public final class SingleInstanceManager {
 
     }
 
-    public static void register(KseFrame kseFrame, BiConsumer<KseFrame, List<File>> fileOpener) {
-        if (!isPrimary) {
+    /**
+     * Registers the main KseFrame with the single instance manager. Needed for opening files.
+     *
+     * @param kseFrame   The KseFrame.
+     * @param fileOpener The file opener.
+     */
+    public void register(KseFrame kseFrame, BiConsumer<KseFrame, List<File>> fileOpener) {
+        // Only start the listener thread if single instance is enabled and is primary.
+        if (PreferencesManager.getPreferences().isSingleInstance() && !isPrimary) {
             return;
         }
 
@@ -105,7 +127,13 @@ public final class SingleInstanceManager {
         listenerThread.start();
     }
 
-    public static void sendToPrimary(List<File> files) throws IOException {
+    /**
+     * Sends the files to open to the primary instance.
+     *
+     * @param files The list of files to send.
+     * @throws IOException If an error occurred when sending the list of files.
+     */
+    public void sendToPrimary(List<File> files) throws IOException {
         if (files.isEmpty()) {
             return;
         }
@@ -118,7 +146,7 @@ public final class SingleInstanceManager {
         }
     }
 
-    private static boolean canConnectToPrimary(Path socketPath) {
+    private boolean canConnectToPrimary(Path socketPath) {
         try (SocketChannel ch = SocketChannel.open(StandardProtocolFamily.UNIX)) {
             UnixDomainSocketAddress addr = UnixDomainSocketAddress.of(socketPath);
             ch.connect(addr);
@@ -128,18 +156,18 @@ public final class SingleInstanceManager {
         }
     }
 
-    private static void listenLoop(KseFrame kseFrame, BiConsumer<KseFrame, List<File>> fileOpener) {
+    private void listenLoop(KseFrame kseFrame, BiConsumer<KseFrame, List<File>> fileOpener) {
         try {
             while (true) {
                 SocketChannel client = serverChannel.accept();
                 handleRequest(client, kseFrame, fileOpener);
             }
         } catch (IOException e) {
-            // log and exit thread
+            // TODO JW - log and exit thread
         }
     }
 
-    private static void handleRequest(SocketChannel client, KseFrame kseFrame, BiConsumer<KseFrame, List<File>> fileOpener) {
+    private void handleRequest(SocketChannel client, KseFrame kseFrame, BiConsumer<KseFrame, List<File>> fileOpener) {
         try (client) {
             List<File> paths = readPaths(client);
             if (!paths.isEmpty()) {
@@ -150,7 +178,7 @@ public final class SingleInstanceManager {
         }
     }
 
-    private static void writePaths(WritableByteChannel ch, List<File> files) throws IOException {
+    private void writePaths(WritableByteChannel ch, List<File> files) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ObjectOutputStream oos = new ObjectOutputStream(baos);
 
@@ -163,7 +191,7 @@ public final class SingleInstanceManager {
         }
     }
 
-    private static List<File> readPaths(ReadableByteChannel ch) throws IOException {
+    private List<File> readPaths(ReadableByteChannel ch) throws IOException {
         try (ObjectInputStream ois = new ObjectInputStream(Channels.newInputStream(ch))) {
             Object incomingObject = ois.readObject();
             if (incomingObject instanceof File[]) {
@@ -175,11 +203,14 @@ public final class SingleInstanceManager {
         return Collections.EMPTY_LIST;
     }
 
-    private static Path getSocketPath() {
+    private Path getSocketPath() {
         return Path.of(System.getProperty("java.io.tmpdir"), SOCKET_FILENAME);
     }
 
-    public static void shutdown() {
+    /**
+     * Closes the socket and cleans up.
+     */
+    public void shutdown() {
         try {
             if (serverChannel != null && serverChannel.isOpen()) {
                 serverChannel.close();

@@ -105,7 +105,7 @@ public class KSE {
                 shell32.SetCurrentProcessExplicitAppUserModelID(new WString(appId)).longValue();
             }
 
-            boolean primary = SingleInstanceManager.tryBecomePrimary();
+            boolean primary = SingleInstanceManager.INSTANCE.tryBecomePrimary();
 
             // Set the install directory property (this is used for restarts and in some cases to find the config file)
             setInstallDirProperty();
@@ -139,9 +139,9 @@ public class KSE {
 
             if (!primary) {
                 try {
-                    SingleInstanceManager.sendToPrimary(parameterFiles);
+                    SingleInstanceManager.INSTANCE.sendToPrimary(parameterFiles);
                 } catch (IOException e) {
-                    // TODO JW - Optional: show a dialog or log
+                    // TODO JW - Show a dialog or log
                 }
                 return;
             }
@@ -197,7 +197,7 @@ public class KSE {
 
     private static void registerShutdownHooks() {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            SingleInstanceManager.shutdown();
+            SingleInstanceManager.INSTANCE.shutdown();
         }, "kse-ipc-shutdown"));
     }
 

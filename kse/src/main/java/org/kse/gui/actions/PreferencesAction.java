@@ -109,6 +109,7 @@ public class PreferencesAction extends ExitAction {
         preferences.setSerialNumberLengthInBytes(dPreferences.getSerialNumberLengthInBytes());
         preferences.setAutomaticallyReload(dPreferences.isAutomaticReloadEnabled());
         preferences.setSilentlyReload(dPreferences.isSilentReloadEnabled());
+        preferences.setSingleInstance(dPreferences.isSingleInstanceEnabled());
 
         preferences.setPkcs12EncryptionSetting(dPreferences.getPkcs12EncryptionSetting());
         Pkcs12Util.setEncryptionStrength(preferences.getPkcs12EncryptionSetting());

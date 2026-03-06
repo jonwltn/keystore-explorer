@@ -66,6 +66,7 @@ class PanelUserInterface {
     private JSpinner jspSnRandomBytes;
     private JCheckBox jcbEnableAutomaticReload;
     private JCheckBox jcbEnableSilentReload;
+    private JCheckBox jcbEnableSingleInstance;
 
     private JCheckBox jcbEnableAutoUpdateChecks;
     private JSpinner jspAutoUpdateCheckInterval;
@@ -176,6 +177,11 @@ class PanelUserInterface {
         jcbEnableSilentReload.setEnabled(jcbEnableAutomaticReload.isSelected());
         jcbEnableSilentReload.setSelected(preferences.isSilentlyReload());
 
+        JLabel jlMultipleInstance = new JLabel(res.getString("DPreferences.jlMultipleInstance.text"));
+        jcbEnableSingleInstance = new JCheckBox(res.getString("DPreferences.jcbEnableSingleInstance.text"));
+        jcbEnableSingleInstance.setToolTipText(res.getString("DPreferences.jcbEnableSingleInstance.tooltip"));
+        jcbEnableSingleInstance.setSelected(preferences.isSingleInstance());
+
         // layout
         JPanel jpUI = new JPanel();
         jpUI.setLayout(new MigLayout("insets dialog", "20lp[][]", "20lp[][]"));
@@ -206,6 +212,8 @@ class PanelUserInterface {
         MiGUtil.addSeparator(jpUI, jlAutoReload.getText());
         jpUI.add(jcbEnableAutomaticReload, "gapx indent, wrap");
         jpUI.add(jcbEnableSilentReload, "gapx indent, wrap");
+        MiGUtil.addSeparator(jpUI, jlMultipleInstance.getText());
+        jpUI.add(jcbEnableSingleInstance, "gapx indent, wrap");
 
         jcbEnableAutoUpdateChecks
                 .addItemListener(evt -> jspAutoUpdateCheckInterval.setEnabled(jcbEnableAutoUpdateChecks.isSelected()));
@@ -335,5 +343,9 @@ class PanelUserInterface {
 
     public JCheckBox getJcbSilentlyReload() {
         return jcbEnableSilentReload;
+    }
+
+    public JCheckBox getJcbSingleInstance() {
+        return jcbEnableSingleInstance;
     }
 }
