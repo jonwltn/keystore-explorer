@@ -20,6 +20,19 @@
 package org.kse.utilities.net;
 
 import static java.util.Collections.singletonList;
+import static org.kse.utilities.net.PacHelperFunctions.alert;
+import static org.kse.utilities.net.PacHelperFunctions.dateRange;
+import static org.kse.utilities.net.PacHelperFunctions.dnsDomainIs;
+import static org.kse.utilities.net.PacHelperFunctions.dnsDomainLevels;
+import static org.kse.utilities.net.PacHelperFunctions.dnsResolve;
+import static org.kse.utilities.net.PacHelperFunctions.isInNet;
+import static org.kse.utilities.net.PacHelperFunctions.isPlainHostName;
+import static org.kse.utilities.net.PacHelperFunctions.isResolvable;
+import static org.kse.utilities.net.PacHelperFunctions.localHostOrDomainIs;
+import static org.kse.utilities.net.PacHelperFunctions.myIpAddress;
+import static org.kse.utilities.net.PacHelperFunctions.shExpMatch;
+import static org.kse.utilities.net.PacHelperFunctions.timeRange;
+import static org.kse.utilities.net.PacHelperFunctions.weekdayRange;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -38,19 +51,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.StringTokenizer;
-import java.util.function.BiFunction;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
-import javax.script.ScriptException;
-
-import org.kse.utilities.TriFunction;
-import org.kse.utilities.VarFunction;
-import org.openjdk.nashorn.api.scripting.ClassFilter;
-import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
+import org.mozilla.javascript.BaseFunction;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.Function;
+import org.mozilla.javascript.Scriptable;
+import org.mozilla.javascript.ScriptableObject;
 
 /**
  * Proxy Selector for Proxy Automatic Configuration (PAC).
@@ -58,19 +64,10 @@ import org.openjdk.nashorn.api.scripting.NashornScriptEngineFactory;
 public class PacProxySelector extends ProxySelector {
     private static final ResourceBundle res = ResourceBundle.getBundle("org/kse/utilities/net/resources");
 
-    private Invocable pacScript;
+    private Scriptable pacScope;
     private final URI pacURI;
     private final Map<URI, List<Proxy>> uriToProxiesCache = new HashMap<>();
 
-    /**
-     * Class filter to restrict access to JRE from PAC script
-     */
-    static class PacClassFilter implements ClassFilter {
-        @Override
-        public boolean exposeToScripts(String s) {
-            return false;
-        }
-    }
 
     /**
      * Construct PacProxySelector using an Automatic proxy configuration URL.
@@ -96,9 +93,9 @@ public class PacProxySelector extends ProxySelector {
      */
     @Override
     public List<Proxy> select(URI uri) {
-        if (pacScript == null) {
+        if (pacScope == null) {
             try {
-                pacScript = compilePacScript(loadPacScript(pacURI));
+                pacScope = compilePacScript(loadPacScript(pacURI));
             } catch (PacProxyException ex) {
                 ex.printStackTrace();
                 return singletonList(Proxy.NO_PROXY);
@@ -111,8 +108,15 @@ public class PacProxySelector extends ProxySelector {
 
         String pacFunctionReturn = null;
 
-        try {
-            pacFunctionReturn = (String) pacScript.invokeFunction("FindProxyForURL", uri.toString(), uri.getHost());
+        try (Context cx = Context.enter()) {
+            cx.setClassShutter(className -> false);
+            Object func = ScriptableObject.getProperty(pacScope, "FindProxyForURL");
+
+            if (func instanceof Function) {
+                Object[] args = { uri.toString(), uri.getHost() };
+                Object result = ((Function) func).call(cx, pacScope, pacScope, args);
+                pacFunctionReturn = Context.toString(result);
+            }
         } catch (Exception ex) {
             ex.printStackTrace();
             return singletonList(Proxy.NO_PROXY);
@@ -162,35 +166,45 @@ public class PacProxySelector extends ProxySelector {
         }
     }
 
-    private Invocable compilePacScript(String pacScript) throws PacProxyException {
-        // Nashorn was removed in Java 15, the standalone Nashorn uses different packages and is compiled for Java 11
-        NashornScriptEngineFactory nashornScriptEngineFactory = new NashornScriptEngineFactory();
-        ScriptEngine jsEngine = nashornScriptEngineFactory.getScriptEngine(new PacClassFilter());
+    private static String argAsString(Object[] args, int index) {
+        return args.length > index ? Context.toString(args[index]) : null;
+    }
 
-        try {
-            jsEngine.put("alert", (Consumer<String>) PacHelperFunctions::alert);
-            jsEngine.put("dnsDomainIs", (BiFunction<String, String, Boolean>) PacHelperFunctions::dnsDomainIs);
-            jsEngine.put("dnsDomainLevels", (Function<String, Integer>) PacHelperFunctions::dnsDomainLevels);
-            jsEngine.put("dnsResolve", (Function<String, String>) PacHelperFunctions::dnsResolve);
-            jsEngine.put("isResolvable", (Function<String, Boolean>) PacHelperFunctions::isResolvable);
-            jsEngine.put("myIpAddress", (Supplier<String>) PacHelperFunctions::myIpAddress);
-            jsEngine.put("isPlainHostName", (Function<String, Boolean>) PacHelperFunctions::isPlainHostName);
-            jsEngine.put("localHostOrDomainIs", (BiFunction<String, String, Boolean>) PacHelperFunctions::localHostOrDomainIs);
-            jsEngine.put("shExpMatch", (BiFunction<String, String, Boolean>) PacHelperFunctions::shExpMatch);
-            jsEngine.put("isInNet", (TriFunction<String, String, String, Boolean>) PacHelperFunctions::isInNet);
-            jsEngine.put("dateRange", (VarFunction<Object, Boolean>) PacHelperFunctions::dateRange);
-            jsEngine.put("weekdayRange", (VarFunction<Object, Boolean>) PacHelperFunctions::weekdayRange);
-            jsEngine.put("timeRange", (VarFunction<Object, Boolean>) PacHelperFunctions::timeRange);
+    private static String argAsString(Object[] args, int index, String defaultValue) {
+        return args.length > index ? Context.toString(args[index]) : defaultValue;
+    }
 
-            // disable access to engine and context
-            jsEngine.eval("Object.defineProperty(this, 'engine', {});");
-            jsEngine.eval("Object.defineProperty(this, 'context', {});");
-            jsEngine.eval("delete this.__noSuchProperty__;");
+    private static void put(Scriptable scope, String name, java.util.function.Function<Object[], Object> fn) {
+        ScriptableObject.putProperty(scope, name, new BaseFunction() {
+            @Override
+            public Object call(Context cx, Scriptable scope, Scriptable thisObj, Object[] args) {
+                return fn.apply(args);
+            }
+        });
+    }
 
-            jsEngine.eval(pacScript);
+    private Scriptable compilePacScript(String pacScript) throws PacProxyException {
+        try (Context cx = Context.enter()) {
+            cx.setClassShutter(className -> false);
+            Scriptable scope = cx.initStandardObjects();
 
-            return (Invocable) jsEngine;
-        } catch (ScriptException ex) {
+            put(scope, "alert", args -> { alert(argAsString(args, 0, "")); return Context.getUndefinedValue(); });
+            put(scope, "dnsDomainIs", args -> dnsDomainIs(argAsString(args, 0), argAsString(args, 1)));
+            put(scope, "dnsDomainLevels", args -> dnsDomainLevels(argAsString(args, 0)));
+            put(scope, "dnsResolve", args -> dnsResolve(argAsString(args, 0)));
+            put(scope, "isResolvable", args -> isResolvable(argAsString(args, 0)));
+            put(scope, "myIpAddress", args -> myIpAddress());
+            put(scope, "isPlainHostName", args -> isPlainHostName(argAsString(args, 0)));
+            put(scope, "localHostOrDomainIs", args -> localHostOrDomainIs(argAsString(args, 0), argAsString(args, 1)));
+            put(scope, "shExpMatch", args -> shExpMatch(argAsString(args, 0), argAsString(args, 1, "")));
+            put(scope, "isInNet", args -> isInNet(argAsString(args, 0), argAsString(args, 1), argAsString(args, 2)));
+            put(scope, "dateRange", args -> dateRange(args));
+            put(scope, "weekdayRange", args -> weekdayRange(args));
+            put(scope, "timeRange", args -> timeRange(args));
+
+            cx.evaluateString(scope, pacScript, "pac", 1, null);
+            return scope;
+        } catch (Exception ex) {
             throw new PacProxyException(res.getString("NoCompilePacScript.exception.message"), ex);
         }
     }

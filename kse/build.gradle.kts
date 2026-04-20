@@ -136,7 +136,7 @@ dependencies {
     implementation("org.violetlib:vaqua:13")
 
     implementation("io.github.java-diff-utils:java-diff-utils:4.15")
-    implementation("org.openjdk.nashorn:nashorn-core:15.7")
+    implementation("org.mozilla:rhino:1.7.15")
     implementation("com.fasterxml.jackson.jr:jackson-jr-objects:2.20.1")
     implementation("com.fasterxml.jackson.jr:jackson-jr-annotation-support:2.20.1")
 
