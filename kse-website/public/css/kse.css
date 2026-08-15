@@ -1,5 +1,9 @@
 html {
   scroll-behavior: smooth;
+  /* Keeps in-page anchor jumps (doc TOC links, #heading URLs) from landing
+     under the sticky navbar. --navbar-height is set from JS in Nav.astro
+     to the navbar's real rendered height. */
+  scroll-padding-top: calc(var(--navbar-height, 60px) + 8px);
 }
 
 body {
@@ -186,19 +190,27 @@ body {
   }
 }
 
-/* At the lg breakpoint, .navbar-collapse's children (the nav item list,
-   search box, and theme toggle) lay out in a single non-wrapping flex row.
-   When that row is a bit too narrow for its content, flexbox shrinks the
-   nav items instead of overflowing, and since a flex item's minimum width
-   is only its *widest word* (not its full text), a two-word label like
-   "Release Notes" can end up narrower than its own text and wrap onto two
-   lines. Force nav-link labels to stay on one line, and let the
-   whole row wrap instead: if space is genuinely too tight, whole items move
-   to a second line rather than a label splitting mid-word. */
+/* Bootstrap's shared `.container` snaps to conservative fixed max-widths
+   per breakpoint (960px from 992px up to 1200px, etc.) regardless of how
+   much wider the actual window is. That 960px cap kicks in at exactly the
+   breakpoint where navbar-expand-lg switches to the horizontal nav row, so
+   the row was squeezed into 960px even on a 1050-1150px window — leaving
+   only a thin margin before something had to give. (On Linux, where
+   Firefox commonly resolves the sans-serif stack to the wider Noto Sans,
+   that margin wasn't enough, and "Release Notes" wrapped.) Let the
+   navbar's own container use the full viewport width instead, independent
+   of the narrower reading-width container page content below it uses. */
 @media (min-width: 992px) {
-  .navbar-collapse {
-    flex-wrap: wrap;
-    row-gap: 0.5rem;
+  .navbar > .container {
+    max-width: 1320px;
+  }
+}
+
+/* Safety net on top of the above: never let the nav item list shrink
+   below its natural width, and never let a label wrap onto two lines. */
+@media (min-width: 992px) {
+  .navbar-nav {
+    flex-shrink: 0;
   }
   .navbar-nav .nav-link {
     white-space: nowrap;
@@ -311,8 +323,11 @@ nav#toc .nav-link.active + ul {
   display: block;
 }
 
+/* Clears the sticky navbar (see #myNavbar's sticky-top in Nav.astro):
+   --navbar-height is set from JS to the navbar's real rendered height,
+   with a fallback for the brief moment before that script runs. */
 nav#toc {
-  top: 42px;
+  top: calc(var(--navbar-height, 60px) + 12px);
 }
 
 /* small screens */

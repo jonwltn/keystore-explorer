@@ -9,7 +9,7 @@ interface Props {
 const { version = '5.6', active } = Astro.props;
 const isActive = (key: string) => (active === key ? 'active' : '');
 ---
-<nav id="myNavbar" class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+<nav id="myNavbar" class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 sticky-top">
     <div class="container">
         <a class="navbar-brand" href="/index.html">KeyStore Explorer</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -83,6 +83,18 @@ const isActive = (key: string) => (active === key ? 'active' : '');
     document.documentElement.setAttribute('data-bs-theme', next);
     localStorage.setItem('theme', next);
   });
+
+  // The navbar is sticky (see #myNavbar's sticky-top class); expose its
+  // real rendered height as a CSS var so other elements (the doc TOC
+  // sidebar, in-page anchor scroll offset) can clear it without a guess.
+  const navbar = document.getElementById('myNavbar');
+  function updateNavbarHeightVar() {
+    if (navbar) {
+      document.documentElement.style.setProperty('--navbar-height', `${navbar.offsetHeight}px`);
+    }
+  }
+  updateNavbarHeightVar();
+  window.addEventListener('resize', updateNavbarHeightVar);
 </script>
 
 <!--

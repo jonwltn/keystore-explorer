@@ -34,6 +34,16 @@ import 'bootstrap';
 import tocbot from 'tocbot';
 
 if (document.querySelector('nav#toc')) {
+  // Tocbot marks a heading "active" once it has scrolled to within
+  // headingsOffset+10px of the top of the page. The sticky navbar's
+  // scroll-padding-top (see kse.css) deliberately leaves navbarHeight+8px
+  // of space above a heading after an anchor jump, so without this the
+  // clicked heading never counts as reached and the *previous* TOC entry
+  // stays highlighted. Keep the `+ 8` here in sync with the `+ 8` in
+  // kse.css's `html { scroll-padding-top: ... }` rule.
+  const navbar = document.getElementById('myNavbar');
+  const headingsOffset = (navbar?.offsetHeight ?? 52) + 8;
+
   tocbot.init({
     tocSelector: 'nav#toc',
     contentSelector: 'body',
@@ -45,6 +55,7 @@ if (document.querySelector('nav#toc')) {
     activeLinkClass: 'active',
     listItemClass: 'nav-item',
     scrollSmooth: false,
+    headingsOffset,
   });
 }
 </script>
