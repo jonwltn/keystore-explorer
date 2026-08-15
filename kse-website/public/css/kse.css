@@ -186,6 +186,25 @@ body {
   }
 }
 
+/* At the lg breakpoint, .navbar-collapse's children (the nav item list,
+   search box, and theme toggle) lay out in a single non-wrapping flex row.
+   When that row is a bit too narrow for its content, flexbox shrinks the
+   nav items instead of overflowing, and since a flex item's minimum width
+   is only its *widest word* (not its full text), a two-word label like
+   "Release Notes" can end up narrower than its own text and wrap onto two
+   lines. Force nav-link labels to stay on one line, and let the
+   whole row wrap instead: if space is genuinely too tight, whole items move
+   to a second line rather than a label splitting mid-word. */
+@media (min-width: 992px) {
+  .navbar-collapse {
+    flex-wrap: wrap;
+    row-gap: 0.5rem;
+  }
+  .navbar-nav .nav-link {
+    white-space: nowrap;
+  }
+}
+
 /* keyboard element */
 /* scoped to [data-bs-theme="light"] (not bare `kbd`) so this reliably
    outranks Bootstrap's own same-specificity kbd rule, which inverts to a
