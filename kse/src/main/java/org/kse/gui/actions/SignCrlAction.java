@@ -20,8 +20,6 @@
 
 package org.kse.gui.actions;
 
-import static org.kse.crypto.SecurityProvider.BOUNCY_CASTLE;
-
 import java.awt.Toolkit;
 import java.io.File;
 import java.io.FileInputStream;
@@ -33,6 +31,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
+import java.security.Provider;
 import java.security.SignatureException;
 import java.security.cert.CRLException;
 import java.security.cert.X509CRL;
@@ -103,11 +102,6 @@ public class SignCrlAction extends KeyStoreExplorerAction {
             }
             KseKeyStore keyStore = currentState.getKeyStore();
 
-            String provider = BOUNCY_CASTLE.jce();
-            if (history.getExplicitProvider() != null) {
-                provider = history.getExplicitProvider().getName();
-            }
-
             PrivateKey privateKey = (PrivateKey) keyStore.getKey(alias, password.toCharArray());
             X509Certificate[] certs = X509CertUtil.orderX509CertChain(
                     X509CertUtil.convertCertificates(keyStore.getCertificateChain(alias)));
@@ -129,7 +123,7 @@ public class SignCrlAction extends KeyStoreExplorerAction {
                 Map<BigInteger, RevokedEntry> mapRevoked = dSignCrl.getMapRevokedEntry();
 
                 x509CRL = signCrl(crlNumber, effectiveDate, nextUpdate, certs[0], privateKey, signatureAlgorithm,
-                                  mapRevoked, provider);
+                                  mapRevoked, history.getExplicitProvider());
                 String newFileName = X509CertUtil.getShortName(certs[0]).toLowerCase();
                 DExportCrl dExportCrl = new DExportCrl(frame, newFileName);
                 dExportCrl.setLocationRelativeTo(frame);
@@ -176,7 +170,7 @@ public class SignCrlAction extends KeyStoreExplorerAction {
 
     private X509CRL signCrl(BigInteger number, Date effectiveDate, Date nextUpdate, X509Certificate caCert,
                             PrivateKey caPrivateKey, String signatureAlgorithm,
-                            Map<BigInteger, RevokedEntry> mapRevokedCertificate, String provider)
+                            Map<BigInteger, RevokedEntry> mapRevokedCertificate, Provider provider)
             throws NoSuchAlgorithmException, OperatorCreationException, CRLException, IOException {
 
         X509v2CRLBuilder crlGen = new JcaX509v2CRLBuilder(caCert.getSubjectX500Principal(), effectiveDate);
@@ -195,6 +189,10 @@ public class SignCrlAction extends KeyStoreExplorerAction {
                             extUtils.createAuthorityKeyIdentifier(caCert.getPublicKey()));
 
         crlGen.addExtension(Extension.cRLNumber, false, new CRLNumber(number));
+
+        if (provider == null) {
+            provider = KSE.BC;
+        }
 
         X509CRLHolder crl = crlGen.build(
                 new JcaContentSignerBuilder(signatureAlgorithm).setProvider(provider).build(caPrivateKey));

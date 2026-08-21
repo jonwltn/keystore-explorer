@@ -19,6 +19,8 @@
  */
 package org.kse.gui.actions;
 
+import static org.kse.crypto.SecurityProvider.MS_CAPI;
+
 import java.awt.Toolkit;
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -236,6 +238,16 @@ public class GenerateKeyPairAction extends KeyStoreExplorerAction implements His
     private KeyPair generateKeyPair(KeyPairType keyPairType, int keyPairSize, String curveName,
                                     Provider provider) {
         DGeneratingKeyPair dGeneratingKeyPair;
+
+        // Don't use the SunMSCAPI provider for key pair generation.
+        // https://bugs.openjdk.java.net/browse/JDK-6407454
+        // "The SunMSCAPI provider doesn't support access to the RSA keys that it generates.
+        // Users of the keytool utility must omit the SunMSCAPI provider from the -provider option and
+        // applications must not specify the SunMSCAPI provider."
+
+        if (MS_CAPI.jce().equals(provider.getName())) {
+            provider = null;
+        }
 
         switch (keyPairType) {
         case RSA:

@@ -104,9 +104,8 @@ public class X509CertificateGenerator {
                                     BigInteger serialNumber, X509Extension extensions, Provider provider)
             throws CryptoException {
         if (version == X509CertificateVersion.VERSION1) {
-            // TODO
             return generateVersion1(subject, issuer, validityStart, validityEnd, publicKey, privateKey, signatureType,
-                                    serialNumber);
+                                    serialNumber, provider);
         } else {
             try {
                 return generateVersion3(subject, issuer, validityStart, validityEnd, publicKey, privateKey,
@@ -181,7 +180,7 @@ public class X509CertificateGenerator {
 
     private X509Certificate generateVersion1(X500Name subject, X500Name issuer, Date validityStart, Date validityEnd,
                                              PublicKey publicKey, PrivateKey privateKey, SignatureType signatureType,
-                                             BigInteger serialNumber) throws CryptoException {
+                                             BigInteger serialNumber, Provider provider) throws CryptoException {
         Date notBefore = validityStart == null ? new Date() : validityStart;
         Date notAfter = validityEnd == null ? new Date(notBefore.getTime() + TimeUnit.DAYS.toMillis(365)) : validityEnd;
 
@@ -189,7 +188,10 @@ public class X509CertificateGenerator {
                                                                                   notAfter, subject, publicKey);
 
         try {
-            ContentSigner certSigner = new JcaContentSignerBuilder(signatureType.jce()).setProvider(KSE.BC)
+            if (provider == null) {
+                provider = KSE.BC;
+            }
+            ContentSigner certSigner = new JcaContentSignerBuilder(signatureType.jce()).setProvider(provider)
                                                                                        .build(privateKey);
             return new JcaX509CertificateConverter().setProvider(KSE.BC).getCertificate(certBuilder.build(certSigner));
         } catch (CertificateException | IllegalStateException | OperatorCreationException ex) {
@@ -218,13 +220,10 @@ public class X509CertificateGenerator {
         }
 
         try {
-            ContentSigner certSigner = null;
-
             if (provider == null) {
-                certSigner = new JcaContentSignerBuilder(signatureType.jce()).setProvider(KSE.BC).build(privateKey);
-            } else {
-                certSigner = new JcaContentSignerBuilder(signatureType.jce()).setProvider(provider).build(privateKey);
+                provider = KSE.BC;
             }
+            ContentSigner certSigner = new JcaContentSignerBuilder(signatureType.jce()).setProvider(provider).build(privateKey);
 
             return new JcaX509CertificateConverter().setProvider(KSE.BC).getCertificate(certBuilder.build(certSigner));
         } catch (CertificateException | IllegalStateException | OperatorCreationException ex) {

@@ -92,12 +92,14 @@ public class CmsSigner {
 
             JcaContentSignerBuilder contentSignerBuilder = new JcaContentSignerBuilder(signatureType.jce())
                     .setSecureRandom(RNG.newInstanceForLongLivedSecrets());
-            JcaDigestCalculatorProviderBuilder digestCalculatorProviderBuilder = new JcaDigestCalculatorProviderBuilder();
+            JcaDigestCalculatorProviderBuilder digestCalculatorProviderBuilder = new JcaDigestCalculatorProviderBuilder()
+                    // No need to use the external provider for digests and some providers (SunMSCAPI)
+                    // don't support any message digest algorithms.
+                    .setProvider(KSE.BC);
             if (provider == null) {
                 provider = KSE.BC;
             }
             contentSignerBuilder.setProvider(provider);
-            digestCalculatorProviderBuilder.setProvider(provider);
 
             CMSSignedDataGenerator generator = new CMSSignedDataGenerator();
             generator.addSignerInfoGenerator(new JcaSignerInfoGeneratorBuilder(digestCalculatorProviderBuilder.build())

@@ -20,6 +20,7 @@
 package org.kse.gui.dialogs;
 
 import java.security.PrivateKey;
+import java.security.interfaces.ECKey;
 import java.security.interfaces.ECPrivateKey;
 import java.util.Collections;
 import java.util.List;
@@ -74,13 +75,16 @@ public class DialogHelper {
             prefsKey = KeyPairType.EC.name();
             // fall-through
         case EC:
-            // SM2 is an EC curve, but it is used with a different set of signature algorithms
-            String curve = EccUtil.getNamedCurve(privateKey);
-            if (CurveSet.SM2.getAllCurveNames().contains(curve)) {
-                sigAlgs = SignatureType.sm2SignatureTypes();
-                prefsKey += SM2_SUFFIX;
-            } else {
-                sigAlgs = SignatureType.ecdsaSignatureTypes();
+            sigAlgs = SignatureType.ecdsaSignatureTypes();
+            // This check blocks access to SM2 signature types for PKCS11 and SunMSCAPI key stores
+            // unless the provider PrivateKey implementation implements the ECKey interface.
+            if (privateKey instanceof ECKey) {
+                // SM2 is an EC curve, but it is used with a different set of signature algorithms
+                String curve = EccUtil.getNamedCurve(privateKey);
+                if (CurveSet.SM2.getAllCurveNames().contains(curve)) {
+                    sigAlgs = SignatureType.sm2SignatureTypes();
+                    prefsKey += SM2_SUFFIX;
+                }
             }
             break;
         case ED25519:
@@ -183,10 +187,12 @@ public class DialogHelper {
             prefsKey = KeyPairType.EC.name();
             // fall-through
         case EC:
-            // SM2 is an EC curve, but it is used with a different set of signature algorithms
-            String curve = EccUtil.getNamedCurve(privateKey);
-            if (CurveSet.SM2.getAllCurveNames().contains(curve)) {
-                prefsKey += SM2_SUFFIX;
+            if (privateKey instanceof ECKey) {
+                // SM2 is an EC curve, but it is used with a different set of signature algorithms
+                String curve = EccUtil.getNamedCurve(privateKey);
+                if (CurveSet.SM2.getAllCurveNames().contains(curve)) {
+                    prefsKey += SM2_SUFFIX;
+                }
             }
             // fall-through
         case RSA:

@@ -52,12 +52,8 @@ public abstract class OpenMsCapiAction extends OpenAction {
 
             KseKeyStore openedKeyStore = KeyStoreUtil.loadMsCapiStore(type);
 
-            // https://bugs.openjdk.java.net/browse/JDK-6407454
-            // "The SunMSCAPI provider doesn't support access to the RSA keys that it generates.
-            // Users of the keytool utility must omit the SunMSCAPI provider from the -provider option and
-            // applications must not specify the SunMSCAPI provider."
-
-            var history = new KeyStoreHistory(openedKeyStore, res.getString(tabTitleKey), null, null);
+            // Set provider for signing operations. See note in GenerateKeyPairAction.
+            var history = new KeyStoreHistory(openedKeyStore, res.getString(tabTitleKey), null, openedKeyStore.getProvider());
 
             kseFrame.addKeyStoreHistory(history);
 
